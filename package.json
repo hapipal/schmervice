@@ -1,0 +1,36 @@
+{
+  "name": "schmervice",
+  "version": "0.0.0",
+  "description": "hapi service registry",
+  "main": "lib/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "lab -a code -t 100 -L test/*.js",
+    "coveralls": "lab -r lcov test/*.js | coveralls"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devinivy/schmervice.git"
+  },
+  "keywords": [],
+  "author": "Devin Ivy <devin@bigroomstudios.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/devinivy/schmervice/issues"
+  },
+  "homepage": "https://github.com/devinivy/schmervice#readme",
+  "peerDependencies": {
+    "hapi": ">=10 <17"
+  },
+  "dependencies": {
+    "hoek": "5.x.x"
+  },
+  "devDependencies": {
+    "code": "5.x.x",
+    "coveralls": "3.x.x",
+    "hapi": "16.x.x",
+    "lab": "14.x.x",
+  }
+}
