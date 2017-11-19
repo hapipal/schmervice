@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/devinivy/schmervice#readme",
   "peerDependencies": {
-    "hapi": ">=10 <17"
+    "hapi": ">=17 <18"
   },
   "dependencies": {
     "hoek": "5.x.x"
@@ -30,7 +30,7 @@
   "devDependencies": {
     "code": "5.x.x",
     "coveralls": "3.x.x",
-    "hapi": "16.x.x",
-    "lab": "14.x.x",
+    "hapi": "17.x.x",
+    "lab": "15.x.x"
   }
 }
