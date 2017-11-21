@@ -12,6 +12,11 @@ describe('Schmervice', () => {
 
     describe('Service class', () => {
 
+        const sleep = (ms) => {
+
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        };
+
         it('sets server and options on the instance.', () => {
 
             const service = new Schmervice.Service('server', 'options');
@@ -206,11 +211,6 @@ describe('Schmervice', () => {
 
         it('accepts caching config in form { cache, generateTimeout }.', async () => {
 
-            const sleep = (ms) => {
-
-                return new Promise((resolve) => setTimeout(resolve, ms));
-            };
-
             const ServiceX = class ServiceX extends Schmervice.Service {
 
                 async add(a, b, fail) {
@@ -262,14 +262,9 @@ describe('Schmervice', () => {
 
         it('accepts caching config in form { ...cache }.', async () => {
 
-            const sleep = (ms) => {
-
-                return new Promise((resolve) => setTimeout(resolve, ms));
-            };
-
             const ServiceX = class ServiceX extends Schmervice.Service {
 
-                async add(a, b, fail) {
+                async add(a, b) {
 
                     await sleep(3);
 
@@ -292,5 +287,541 @@ describe('Schmervice', () => {
         });
     });
 
-    describe('plugin', () => null);
+    describe('plugin', () => {
+
+        it('can be registered multiple times.', async () => {
+
+            const server = Hapi.server();
+
+            expect(server.services).to.not.be.a.function();
+            expect(server.registerService).to.not.be.a.function();
+
+            await server.register(Schmervice);
+            expect(server.services).to.be.a.function();
+            expect(server.registerService).to.be.a.function();
+
+            await server.register(Schmervice);
+            expect(server.services).to.be.a.function();
+            expect(server.registerService).to.be.a.function();
+        });
+
+        describe('server.registerService() decoration', () => {
+
+            it('registers a single service, passing server and options.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {
+                    constructor(...args) {
+
+                        this.args = args;
+                    }
+                };
+
+                server.registerService(ServiceX);
+
+                expect(server.services()).to.only.contain(['serviceX']);
+
+                const { serviceX } = server.services();
+
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+                expect(serviceX.args).to.have.length(2);
+                expect(serviceX.args[0]).to.shallow.equal(server);
+                expect(serviceX.args[1]).to.shallow.equal(server.realm.pluginOptions);
+                expect(serviceX.args[1]).to.equal({});
+            });
+
+            it('registers an array of services, passing server and options.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {
+                    constructor(...args) {
+
+                        this.args = args;
+                    }
+                };
+
+                const ServiceY = class ServiceY {
+                    constructor(...args) {
+
+                        this.args = args;
+                    }
+                };
+
+                server.registerService([ServiceX, ServiceY]);
+
+                expect(server.services()).to.only.contain(['serviceX', 'serviceY']);
+
+                const { serviceX, serviceY } = server.services();
+
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+                expect(serviceX.args).to.have.length(2);
+                expect(serviceX.args[0]).to.shallow.equal(server);
+                expect(serviceX.args[1]).to.shallow.equal(server.realm.pluginOptions);
+                expect(serviceX.args[1]).to.equal({});
+
+                expect(serviceY).to.be.an.instanceof(ServiceY);
+                expect(serviceY.args).to.have.length(2);
+                expect(serviceY.args[0]).to.shallow.equal(server);
+                expect(serviceY.args[1]).to.shallow.equal(server.realm.pluginOptions);
+                expect(serviceY.args[1]).to.equal({});
+            });
+
+            it('throws when a service has no name.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                expect(() => server.registerService(class {})).to.throw('The service class must have a name.');
+            });
+
+            it('throws when two services with the same name are registered.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class ServiceX {});
+                expect(() => server.registerService(class ServiceX {})).to.throw('A service named ServiceX has already been registered.');
+            });
+        });
+
+        describe('request.services() decoration', () => {
+
+            it('returns service instances associated with the relevant route\'s realm.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                server.registerService(class ServiceY {});
+
+                let handlerServices;
+                let extServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.registerService(ServiceX);
+
+                        srv.route({
+                            method: 'get',
+                            path: '/',
+                            handler(request) {
+
+                                handlerServices = request.services();
+
+                                return { ok: true };
+                            }
+                        });
+
+                        srv.ext('onPreAuth', (request, h) => {
+
+                            extServices = request.services();
+
+                            return h.continue;
+                        });
+                    }
+                };
+
+                await server.register(plugin);
+
+                await server.inject('/');
+
+                expect(handlerServices).to.shallow.equal(extServices);
+                expect(handlerServices).to.only.contain(['serviceX']);
+                const { serviceX } = handlerServices;
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+            });
+
+            it('returns empty object if there are no services associated with relevant route\'s realm.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class ServiceX {});
+
+                let handlerServices;
+                let extServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.route({
+                            method: 'get',
+                            path: '/',
+                            handler(request) {
+
+                                handlerServices = request.services();
+
+                                return { ok: true };
+                            }
+                        });
+
+                        srv.ext('onPreAuth', (request, h) => {
+
+                            extServices = request.services();
+
+                            return h.continue;
+                        });
+                    }
+                };
+
+                await server.register(plugin);
+
+                await server.inject('/');
+
+                expect(handlerServices).to.equal({});
+                expect(extServices).to.equal({});
+                expect(handlerServices).to.shallow.equal(extServices);
+            });
+
+            it('returns service instances associated with the root realm when passed true.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                const ServiceY = class ServiceY {};
+                server.registerService(ServiceY);
+
+                let handlerServices;
+                let extServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.registerService(ServiceX);
+
+                        srv.route({
+                            method: 'get',
+                            path: '/',
+                            handler(request) {
+
+                                handlerServices = request.services(true);
+
+                                return { ok: true };
+                            }
+                        });
+
+                        srv.ext('onPreAuth', (request, h) => {
+
+                            extServices = request.services(true);
+
+                            return h.continue;
+                        });
+                    }
+                };
+
+                await server.register(plugin);
+
+                await server.inject('/');
+
+                expect(handlerServices).to.shallow.equal(extServices);
+                expect(handlerServices).to.only.contain(['serviceX', 'serviceY']);
+                const { serviceX, serviceY } = handlerServices;
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+                expect(serviceY).to.be.an.instanceof(ServiceY);
+            });
+        });
+
+        describe('h.services() decoration', () => {
+
+            it('returns service instances associated with toolkit\'s realm.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                server.registerService(class ServiceY {});
+
+                let handlerServices;
+                let extServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.registerService(ServiceX);
+
+                        srv.route({
+                            method: 'get',
+                            path: '/',
+                            handler(request, h) {
+
+                                handlerServices = h.services();
+
+                                return { ok: true };
+                            }
+                        });
+
+                        srv.ext('onRequest', (request, h) => {
+
+                            extServices = h.services();
+
+                            return h.continue;
+                        });
+                    }
+                };
+
+                await server.register(plugin);
+
+                await server.inject('/');
+
+                expect(handlerServices).to.shallow.equal(extServices);
+                expect(handlerServices).to.only.contain(['serviceX']);
+                const { serviceX } = handlerServices;
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+            });
+
+            it('returns empty object if there are no services associated with toolkit\'s realm.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class ServiceX {});
+
+                let handlerServices;
+                let extServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.route({
+                            method: 'get',
+                            path: '/',
+                            handler(request, h) {
+
+                                handlerServices = h.services();
+
+                                return { ok: true };
+                            }
+                        });
+
+                        srv.ext('onRequest', (request, h) => {
+
+                            extServices = h.services();
+
+                            return h.continue;
+                        });
+                    }
+                };
+
+                await server.register(plugin);
+
+                await server.inject('/');
+
+                expect(handlerServices).to.equal({});
+                expect(extServices).to.equal({});
+                expect(handlerServices).to.shallow.equal(extServices);
+            });
+
+            it('returns service instances associated with the root realm when passed true.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                const ServiceY = class ServiceY {};
+                server.registerService(ServiceY);
+
+                let handlerServices;
+                let extServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.registerService(ServiceX);
+
+                        srv.route({
+                            method: 'get',
+                            path: '/',
+                            handler(request, h) {
+
+                                handlerServices = h.services(true);
+
+                                return { ok: true };
+                            }
+                        });
+
+                        srv.ext('onRequest', (request, h) => {
+
+                            extServices = h.services(true);
+
+                            return h.continue;
+                        });
+                    }
+                };
+
+                await server.register(plugin);
+
+                await server.inject('/');
+
+                expect(handlerServices).to.shallow.equal(extServices);
+                expect(handlerServices).to.only.contain(['serviceX', 'serviceY']);
+                const { serviceX, serviceY } = handlerServices;
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+                expect(serviceY).to.be.an.instanceof(ServiceY);
+            });
+        });
+
+        describe('server.services() decoration', () => {
+
+            it('returns service instances associated with server\'s realm.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                server.registerService(class ServiceY {});
+
+                let srvServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.registerService(ServiceX);
+
+                        srvServices = srv.services();
+                    }
+                };
+
+                await server.register(plugin);
+
+                expect(srvServices).to.only.contain(['serviceX']);
+                const { serviceX } = srvServices;
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+            });
+
+            it('returns empty object if there are no services associated with toolkit\'s realm.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class ServiceX {});
+
+                let srvServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srvServices = srv.services();
+                    }
+                };
+
+                await server.register(plugin);
+
+                expect(srvServices).to.equal({});
+            });
+
+            it('returns service instances associated with the root realm when passed true.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                const ServiceY = class ServiceY {};
+                server.registerService(ServiceY);
+
+                let srvServices;
+
+                const plugin = {
+                    name: 'plugin',
+                    register(srv, options) {
+
+                        srv.registerService(ServiceX);
+
+                        srvServices = srv.services(true);
+                    }
+                };
+
+                await server.register(plugin);
+
+                expect(srvServices).to.only.contain(['serviceX', 'serviceY']);
+                const { serviceX, serviceY } = srvServices;
+                expect(serviceX).to.be.an.instanceof(ServiceX);
+                expect(serviceY).to.be.an.instanceof(ServiceY);
+            });
+        });
+
+        describe('service ownership', () => {
+
+            it('applies to server\'s realm and its ancestors.', async () => {
+
+                const makePlugin = (name, services, plugins) => ({
+                    name,
+                    async register(srv, options) {
+
+                        await srv.register(plugins);
+                        srv.registerService(services);
+                        srv.expose('services', () => srv.services());
+                    }
+                });
+
+                const ServiceO = class ServiceO {};
+                const ServiceA1 = class ServiceA1 {};
+                const ServiceA1a = class ServiceA1a {};
+                const ServiceA1b = class ServiceA1b {};
+                const ServiceA2 = class ServiceA2 {};
+                const ServiceX1a = class ServiceX1a {};
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const pluginX1a = makePlugin('pluginX1a', [], []);
+                const pluginX1 = makePlugin('pluginX1', [ServiceX1a], [pluginX1a]);
+                const pluginX = makePlugin('pluginX', [], [pluginX1]);
+                const pluginA1 = makePlugin('pluginA1', [ServiceA1a, ServiceA1b], []);
+                const pluginA = makePlugin('pluginA', [ServiceA1, ServiceA2], [pluginA1, pluginX]);
+
+                server.registerService(ServiceO);
+
+                await server.register(pluginA);
+
+                const {
+                    pluginX1a: X1a,
+                    pluginX1: X1,
+                    pluginX: X,
+                    pluginA1: A1,
+                    pluginA: A
+                } = server.plugins;
+
+                expect(X1a.services()).to.equal({});
+                expect(X1.services()).to.only.contain([
+                    'serviceX1a'
+                ]);
+                expect(X.services()).to.only.contain([
+                    'serviceX1a'
+                ]);
+                expect(A1.services()).to.only.contain([
+                    'serviceA1a',
+                    'serviceA1b'
+                ]);
+                expect(A.services()).to.only.contain([
+                    'serviceA1',
+                    'serviceA1a',
+                    'serviceA1b',
+                    'serviceA2',
+                    'serviceX1a'
+                ]);
+                expect(server.services()).to.only.contain([
+                    'serviceO',
+                    'serviceA1',
+                    'serviceA1a',
+                    'serviceA1b',
+                    'serviceA2',
+                    'serviceX1a'
+                ]);
+            });
+        });
+    });
 });
