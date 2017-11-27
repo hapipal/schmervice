@@ -10,11 +10,11 @@ a service layer for hapi
 Services are a nice way to organize related business logic or transactions into classes.  Schmervice is a service layer designed to integrate nicely with hapi.  It consists of two parts that can be used together or separately,
 
   1. a base `Service` class that integrates your service with hapi by,
-    - giving it access to the relevant `server` and plugin `options`.
-    - allowing you to implement `async initialize()` and `async teardown()` methods that should run when the server initializes and stops.
-    - allowing you to configure certain methods as being cacheable, with all the server method configuration that you're accustomed to.
+      - giving it access to the relevant `server` and plugin `options`.
+      - allowing you to implement `async initialize()` and `async teardown()` methods that should run when the server initializes and stops.
+      - allowing you to configure certain methods as being cacheable, with all the server method configuration that you're accustomed to.
 
-  2. A hapi plugin that allows you to register services and access them where it is most convenient, such as in route handlers.  This registry respects plugin boundaries and is hierarchical, so unrelated plugins can safely register their own services without affecting each other.
+  2. a hapi plugin that allows you to register services and access them where it is most convenient, such as in route handlers.  This registry respects plugin boundaries and is hierarchical, so unrelated plugins can safely register their own services without affecting each other.
 
 
 ```js

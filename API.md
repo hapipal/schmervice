@@ -1,7 +1,7 @@
 # API Reference
 ## The hapi plugin
 ### Registration
-Schmervice may be registered multiple times– it should be registered in any plugin that would like to use any of its features.  It takes no plugin registration options and is entirely configured per-plugin using [`server.registerService()`](serverregisterserviceserviceclass).
+Schmervice may be registered multiple times– it should be registered in any plugin that would like to use any of its features.  It takes no plugin registration options and is entirely configured per-plugin using [`server.registerService()`](#serverregisterserviceserviceclass).
 
 ### Server decorations
 #### `server.registerService(ServiceClass)`
