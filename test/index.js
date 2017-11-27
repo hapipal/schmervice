@@ -25,6 +25,19 @@ describe('Schmervice', () => {
             expect(service.options).to.equal('options');
         });
 
+        it('context getter returns server\'s context set with srv.bind().', () => {
+
+            const server = Hapi.server();
+            const service = new Schmervice.Service(server, {});
+
+            expect(service.context).to.equal(null);
+
+            const ctx = {};
+            server.bind(ctx);
+
+            expect(service.context).to.shallow.equal(ctx);
+        });
+
         it('runs initialize() onPreStart and teardown() onPostStop.', async () => {
 
             const ServiceX = class ServiceX extends Schmervice.Service {
@@ -209,7 +222,7 @@ describe('Schmervice', () => {
             expect(() => new ServiceX(server, {})).to.throw('Caching config can only be specified once.');
         });
 
-        it('accepts caching config in form { cache, generateTimeout }.', async () => {
+        it('accepts caching config in form { cache, generateKey }.', async () => {
 
             const ServiceX = class ServiceX extends Schmervice.Service {
 
@@ -218,7 +231,7 @@ describe('Schmervice', () => {
                     this.called = (this.called || 0) + 1;
 
                     if (fail) {
-                        await sleep(3);
+                        await sleep(3); // Longer than generateTimeout
                     }
 
                     return a + b;
@@ -266,7 +279,7 @@ describe('Schmervice', () => {
 
                 async add(a, b) {
 
-                    await sleep(3);
+                    await sleep(3); // Longer than generateTimeout
 
                     return a + b;
                 }
