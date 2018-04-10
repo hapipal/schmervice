@@ -12,15 +12,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devinivy/schmervice.git"
+    "url": "git+https://github.com/hapipal/schmervice.git"
   },
   "keywords": [],
   "author": "Devin Ivy <devin@bigroomstudios.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/devinivy/schmervice/issues"
+    "url": "https://github.com/hapipal/schmervice/issues"
   },
-  "homepage": "https://github.com/devinivy/schmervice#readme",
+  "homepage": "https://github.com/hapipal/schmervice#readme",
   "peerDependencies": {
     "hapi": ">=17 <18"
   },
