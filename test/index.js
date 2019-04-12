@@ -38,6 +38,111 @@ describe('Schmervice', () => {
             expect(service.context).to.shallow.equal(ctx);
         });
 
+        describe('bind() method', () => {
+
+            it('binds functions', () => {
+
+                const ServiceX = class ServiceX extends Schmervice.Service {
+                    org() {
+
+                        return this.context.org;
+                    }
+                };
+                const server = Hapi.server();
+                server.bind({ org: 'HapiPal' });
+                const serviceX = new ServiceX(server, {});
+                const { org } = serviceX.bind();
+
+                expect(org()).to.equal('HapiPal');
+            });
+
+            it('returns a cached bound instance', () => {
+
+                const ServiceX = class ServiceX extends Schmervice.Service {};
+                const server = Hapi.server();
+                const serviceX = new ServiceX(server, {});
+
+                expect(serviceX.bind()).to.shallow.equal(serviceX.bind());
+            });
+
+            it('lazily creates a bound instance', () => {
+
+                const ServiceX = class ServiceX extends Schmervice.Service {};
+                const server = Hapi.server();
+                const serviceX = new ServiceX(server, {});
+
+                expect(serviceX._boundInstance).to.equal(undefined);
+
+                serviceX.bind();
+
+                expect(serviceX._boundInstance instanceof ServiceX).to.equal(true);
+            });
+
+            it('binds functions up the prototype chain (#Service.context)', () => {
+
+                const ServiceX = class ServiceX extends Schmervice.Service {};
+                const server = Hapi.server();
+                server.bind({ org: 'HapiPal' });
+                const serviceX = new ServiceX(server, {});
+                const { context } = serviceX.bind();
+
+                expect(context).to.equal({ org: 'HapiPal' });
+            });
+
+            it('bind functions up the prototype chain (#Service.caching)', async () => {
+
+                const ServiceX = class ServiceX extends Schmervice.Service {
+
+                    constructor(server, options) {
+
+                        super(server, options);
+                    }
+
+                    add(a, b) {
+
+                        this.called = (this.called || 0) + 1;
+
+                        return a + b;
+                    }
+                };
+
+                const server = Hapi.server();
+                const serviceX = new ServiceX(server, {});
+                const { caching } = serviceX.bind();
+
+                caching({
+                    add: {
+                        expiresIn: 2000,
+                        generateTimeout: false
+                    }
+                });
+
+                // Replaced with server method
+                expect(serviceX.add).to.not.shallow.equal(ServiceX.prototype.add);
+
+                expect(await serviceX.add(1, 2)).to.equal(3);
+                expect(serviceX.called).to.equal(1);
+
+                expect(await serviceX.add(1, 2)).to.equal(3);
+                expect(serviceX.called).to.equal(2);
+
+                // Let the caching begin
+                await server.initialize();
+
+                expect(await serviceX.add(1, 2)).to.equal(3);
+                expect(serviceX.called).to.equal(3);
+
+                expect(await serviceX.add(1, 2)).to.equal(3);
+                expect(serviceX.called).to.equal(3);
+
+                expect(await serviceX.add(2, 3)).to.equal(5);
+                expect(serviceX.called).to.equal(4);
+
+                expect(await serviceX.add(2, 3)).to.equal(5);
+                expect(serviceX.called).to.equal(4);
+            });
+        });
+
         it('runs initialize() onPreStart and teardown() onPostStop.', async () => {
 
             const ServiceX = class ServiceX extends Schmervice.Service {
