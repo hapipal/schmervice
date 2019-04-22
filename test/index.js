@@ -48,12 +48,14 @@ describe('Schmervice', () => {
                         return this.context.org;
                     }
                 };
+
                 const server = Hapi.server();
-                server.bind({ org: 'HapiPal' });
+                server.bind({ org: 'hapipal' });
+
                 const serviceX = new ServiceX(server, {});
                 const { org } = serviceX.bind();
 
-                expect(org()).to.equal('HapiPal');
+                expect(org()).to.equal('hapipal');
             });
 
             it('returns a cached bound instance', () => {
@@ -65,38 +67,108 @@ describe('Schmervice', () => {
                 expect(serviceX.bind()).to.shallow.equal(serviceX.bind());
             });
 
-            it('lazily creates a bound instance', () => {
+            it('lazily creates a bound instance, without calling constructor or getters.', () => {
 
-                const ServiceX = class ServiceX extends Schmervice.Service {};
+                let calledConstructor = 0;
+                let calledGetter = 0;
+                const ServiceX = class ServiceX extends Schmervice.Service {
+
+                    constructor(...args) {
+
+                        super(...args);
+
+                        calledConstructor++;
+                    }
+
+                    static get someProp() {
+
+                        calledGetter++;
+                    }
+                };
+
                 const server = Hapi.server();
                 const serviceX = new ServiceX(server, {});
 
-                expect(serviceX._boundInstance).to.equal(undefined);
+                expect(calledConstructor).to.equal(1);
+                expect(calledGetter).to.equal(0);
+                expect(Object.getOwnPropertySymbols(serviceX)).to.have.length(0);
 
-                serviceX.bind();
+                const boundInstance = serviceX.bind();
 
-                expect(serviceX._boundInstance instanceof ServiceX).to.equal(true);
+                expect(calledConstructor).to.equal(1);
+                expect(calledGetter).to.equal(0);
+                expect(Object.getOwnPropertySymbols(serviceX)).to.have.length(1);
+
+                const [symbol] = Object.getOwnPropertySymbols(serviceX);
+
+                expect(serviceX[symbol]).to.shallow.equal(boundInstance);
             });
 
             it('binds functions up the prototype chain (#Service.context)', () => {
 
-                const ServiceX = class ServiceX extends Schmervice.Service {};
-                const server = Hapi.server();
-                server.bind({ org: 'HapiPal' });
-                const serviceX = new ServiceX(server, {});
-                const { context } = serviceX.bind();
+                const ServiceX = class ServiceX extends Schmervice.Service {
 
-                expect(context).to.equal({ org: 'HapiPal' });
+                    constructor(...args) {
+
+                        super(...args);
+
+                        this.a = 'a';
+                    }
+
+                    getB() {
+
+                        return this.b;
+                    }
+                };
+
+
+                const ServiceXX = class ServiceXX extends ServiceX {
+
+                    constructor(...args) {
+
+                        super(...args);
+
+                        this.b = 'b';
+                    }
+
+                    getA() {
+
+                        return this.a;
+                    }
+                };
+
+                const server = Hapi.server();
+                server.bind({ org: 'hapipal' });
+
+                const serviceXX = new ServiceXX(server, {});
+
+                // Getters and inheritance are all good
+                {
+                    const { context, a, b, getA, getB } = serviceXX.bind();
+
+                    expect(context).to.equal({ org: 'hapipal' });
+                    expect(a).to.equal('a');
+                    expect(b).to.equal('b');
+                    expect(getA()).to.equal('a');
+                    expect(getB()).to.equal('b');
+                }
+
+                // Re-binding works equally well
+                {
+                    const { bind } = serviceXX.bind();
+                    const { context, a, b, getA, getB } = bind();
+
+                    expect(context).to.equal({ org: 'hapipal' });
+                    expect(a).to.equal('a');
+                    expect(b).to.equal('b');
+                    expect(getA()).to.equal('a');
+                    expect(getB()).to.equal('b');
+                }
             });
 
             it('bind functions up the prototype chain (#Service.caching)', async () => {
 
                 const ServiceX = class ServiceX extends Schmervice.Service {
-
-                    constructor(server, options) {
-
-                        super(server, options);
-                    }
 
                     add(a, b) {
 
@@ -108,6 +180,7 @@ describe('Schmervice', () => {
 
                 const server = Hapi.server();
                 const serviceX = new ServiceX(server, {});
+
                 const { caching } = serviceX.bind();
 
                 caching({
