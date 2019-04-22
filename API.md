@@ -33,6 +33,9 @@ The hapi plugin `options` passed to the constructor.
 ### `service.context`
 The context of `service.server` set using [`server.bind()`](https://github.com/hapijs/hapi/blob/master/API.md#server.bind()).  Will be `null` if no context has been set.  This is implemented lazily as a getter based upon `service.server` so that services can be part of the context without introducing any circular dependencies between the two.
 
+### `service.bind()`
+Returns a new service instance where all methods are bound to the service instance allowing you to deconstruct methods without losing the `this` context.
+
 ### `async service.initialize()`
 This is not implemented on the base service class, but when it is implemented by an extending class then it will be called during `server` initialization (via `onPreStart` [server extension](https://github.com/hapijs/hapi/blob/master/API.md#server.ext()) added when the service is instanced).
 
