@@ -25,12 +25,12 @@
     "@hapi/hapi": ">=17 <19"
   },
   "dependencies": {
-    "@hapi/hoek": "6.x.x"
+    "@hapi/hoek": "8.x.x"
   },
   "devDependencies": {
     "@hapi/code": "5.x.x",
     "@hapi/hapi": "18.x.x",
-    "@hapi/lab": "18.x.x",
+    "@hapi/lab": "19.x.x",
     "coveralls": "3.x.x"
   }
 }
