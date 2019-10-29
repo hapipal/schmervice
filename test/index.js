@@ -166,7 +166,7 @@ describe('Schmervice', () => {
                 }
             });
 
-            it('bind functions up the prototype chain (#Service.caching)', async () => {
+            it('binds functions up the prototype chain (#Service.caching)', async () => {
 
                 const ServiceX = class ServiceX extends Schmervice.Service {
 
