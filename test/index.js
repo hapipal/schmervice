@@ -608,6 +608,88 @@ describe('Schmervice', () => {
                 expect(serviceZ).to.shallow.equal(serviceZObject);
             });
 
+            it('registers hapi plugin instances, respecting their name.', { plan: 2 }, async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                await server.register({
+                    name: 'some plugin',
+                    register(srv) {
+
+                        server.registerService(srv);
+
+                        const services = server.services();
+
+                        expect(services).to.only.contain(['somePlugin']);
+                        expect(services.somePlugin).shallow.equal(srv);
+                    }
+                });
+            });
+
+            it('names services in camel-case by default.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class {
+                    static get name() {
+
+                        return '-camel_case class_';
+                    }
+                });
+
+                server.registerService({
+                    name: '-camel_case object_'
+                });
+
+                server.registerService(() => ({
+                    name: '-camel_case function_'
+                }));
+
+                const services = server.services();
+
+                expect(services).to.only.contain(['camelCaseClass', 'camelCaseObject', 'camelCaseFunction']);
+            });
+
+            it('names services literally when using Schmervice.name symbol.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class Unused {
+                    static get [Schmervice.name]() {
+
+                        return 'raw-name_class';
+                    }
+                });
+
+                server.registerService({
+                    name: 'Unused',
+                    [Schmervice.name]: 'raw-name_object'
+                });
+
+                server.registerService(() => ({
+                    name: 'Unused',
+                    [Schmervice.name]: 'raw-name_function'
+                }));
+
+                const services = server.services();
+
+                expect(services).to.only.contain(['raw-name_class', 'raw-name_function', 'raw-name_object']);
+            });
+
+            it('throws when passed non-services/factories.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                expect(() => server.registerService()).to.throw();
+                expect(() => server.registerService('nothing')).to.throw();
+                expect(() => server.registerService(() => undefined)).to.throw();
+                expect(() => server.registerService(() => 'nothing')).to.throw();
+            });
+
             it('throws when a service has no name.', async () => {
 
                 const server = Hapi.server();
