@@ -498,7 +498,7 @@ describe('Schmervice', () => {
 
         describe('server.registerService() decoration', () => {
 
-            it('registers a single service, passing server and options.', async () => {
+            it('registers a single service, passing server and options (class factory).', async () => {
 
                 const server = Hapi.server();
                 await server.register(Schmervice);
@@ -523,6 +523,48 @@ describe('Schmervice', () => {
                 expect(serviceX.args[1]).to.equal({});
             });
 
+            it('registers a single service, passing server and options (function factory).', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const createServiceX = (...args) => ({
+                    name: 'ServiceX',
+                    args
+                });
+
+                server.registerService(createServiceX);
+
+                expect(server.services()).to.only.contain(['serviceX']);
+
+                const { serviceX } = server.services();
+
+                expect(serviceX.name).to.equal('ServiceX');
+                expect(serviceX.args).to.have.length(2);
+                expect(serviceX.args[0]).to.shallow.equal(server);
+                expect(serviceX.args[1]).to.shallow.equal(server.realm.pluginOptions);
+                expect(serviceX.args[1]).to.equal({});
+            });
+
+            it('registers a single service (object).', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const serviceXObject = {
+                    name: 'ServiceX'
+                };
+
+                server.registerService(serviceXObject);
+
+                expect(server.services()).to.only.contain(['serviceX']);
+
+                const { serviceX } = server.services();
+
+                expect(serviceX.name).to.equal('ServiceX');
+                expect(serviceX).to.shallow.equal(serviceXObject);
+            });
+
             it('registers an array of services, passing server and options.', async () => {
 
                 const server = Hapi.server();
@@ -535,18 +577,20 @@ describe('Schmervice', () => {
                     }
                 };
 
-                const ServiceY = class ServiceY {
-                    constructor(...args) {
+                const createServiceY = (...args) => ({
+                    name: 'ServiceY',
+                    args
+                });
 
-                        this.args = args;
-                    }
+                const serviceZObject = {
+                    name: 'ServiceZ'
                 };
 
-                server.registerService([ServiceX, ServiceY]);
+                server.registerService([ServiceX, createServiceY, serviceZObject]);
 
-                expect(server.services()).to.only.contain(['serviceX', 'serviceY']);
+                expect(server.services()).to.only.contain(['serviceX', 'serviceY', 'serviceZ']);
 
-                const { serviceX, serviceY } = server.services();
+                const { serviceX, serviceY, serviceZ } = server.services();
 
                 expect(serviceX).to.be.an.instanceof(ServiceX);
                 expect(serviceX.args).to.have.length(2);
@@ -554,11 +598,14 @@ describe('Schmervice', () => {
                 expect(serviceX.args[1]).to.shallow.equal(server.realm.pluginOptions);
                 expect(serviceX.args[1]).to.equal({});
 
-                expect(serviceY).to.be.an.instanceof(ServiceY);
+                expect(serviceY.name).to.equal('ServiceY');
                 expect(serviceY.args).to.have.length(2);
                 expect(serviceY.args[0]).to.shallow.equal(server);
                 expect(serviceY.args[1]).to.shallow.equal(server.realm.pluginOptions);
                 expect(serviceY.args[1]).to.equal({});
+
+                expect(serviceZ.name).to.equal('ServiceZ');
+                expect(serviceZ).to.shallow.equal(serviceZObject);
             });
 
             it('throws when a service has no name.', async () => {
@@ -567,6 +614,8 @@ describe('Schmervice', () => {
                 await server.register(Schmervice);
 
                 expect(() => server.registerService(class {})).to.throw('The service class must have a name.');
+                expect(() => server.registerService(() => ({}))).to.throw('The service must have a name.');
+                expect(() => server.registerService({})).to.throw('The service must have a name.');
             });
 
             it('throws when two services with the same name are registered.', async () => {
