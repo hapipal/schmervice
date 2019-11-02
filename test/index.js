@@ -710,6 +710,97 @@ describe('Schmervice', () => {
             });
         });
 
+        describe('Schmervice.withName()', () => {
+
+            it('applies a service name to a service or factory.', async () => {
+
+                // Object
+
+                const obj = { name: 'Unused', some: 'prop' };
+
+                expect(Schmervice.withName('someServiceObject', obj)).to.shallow.equal(obj);
+                expect(obj).to.equal({
+                    [Schmervice.name]: 'someServiceObject',
+                    name: 'Unused',
+                    some: 'prop'
+                });
+
+                // Class
+                const Service = class Service {};
+
+                expect(Schmervice.withName('someServiceClass', Service)).to.shallow.equal(Service);
+                expect(Service[Schmervice.name]).to.equal('someServiceClass');
+
+                // Sync factory
+
+                const factory = (...args) => ({ name: 'Unused', some: 'prop', args });
+
+                expect(Schmervice.withName('someServiceFunction', factory)(1, 2, 3)).to.equal({
+                    [Schmervice.name]: 'someServiceFunction',
+                    name: 'Unused',
+                    some: 'prop',
+                    args: [1, 2, 3]
+                });
+
+                // Async factory (not supported by server.registerService(), but useful with haute-couture unwrapping)
+
+                const asyncFactory = async (...args) => {
+
+                    await new Promise((resolve) => setTimeout(resolve, 1));
+
+                    return { name: 'Unused', some: 'prop', args };
+                };
+
+                expect(await Schmervice.withName('someServiceAsyncFunction', asyncFactory)(1, 2, 3)).to.equal({
+                    [Schmervice.name]: 'someServiceAsyncFunction',
+                    name: 'Unused',
+                    some: 'prop',
+                    args: [1, 2, 3]
+                });
+            });
+
+            it('does not apply a service name to object or class that already has one', async () => {
+
+                // Object
+
+                const obj = { [Schmervice.name]: 'x' };
+
+                expect(() => Schmervice.withName('someServiceObject', obj))
+                    .to.throw('Cannot apply a name to a service that already has one.');
+
+                // Class
+
+                const Service = class Service {
+                    static get [Schmervice.name]() {
+
+                        return 'x';
+                    }
+                };
+
+                expect(() => Schmervice.withName('someServiceClass', Service))
+                    .to.throw('Cannot apply a name to a service that already has one.');
+
+                // Sync factory
+
+                const factory = () => ({ [Schmervice.name]: 'x' });
+
+                expect(Schmervice.withName('someServiceFunction', factory))
+                    .to.throw('Cannot apply a name to a service that already has one.');
+
+                // Async factory (not supported by server.registerService(), but useful with haute-couture unwrapping)
+
+                const asyncFactory = async () => {
+
+                    await new Promise((resolve) => setTimeout(resolve, 1));
+
+                    return { [Schmervice.name]: 'x' };
+                };
+
+                await expect(Schmervice.withName('someServiceAsyncFunction', asyncFactory)())
+                    .to.reject('Cannot apply a name to a service that already has one.');
+            });
+        });
+
         describe('request.services() decoration', () => {
 
             it('returns service instances associated with the relevant route\'s realm.', async () => {
