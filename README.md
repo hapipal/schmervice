@@ -21,7 +21,7 @@ Services are a nice way to organize related business logic or transactions into 
 
 ```js
 const Schmervice = require('schmervice');
-const Hapi = require('hapi');
+const Hapi = require('@hapi/hapi');
 
 (async () => {
 
@@ -63,6 +63,111 @@ const Hapi = require('hapi');
     await server.start();
 
     console.log(`Start adding at ${server.info.uri}`);
+})();
+```
+
+### Functional style
+
+Schmervice allows you to write services in a functional style in additional to the class-oriented approach shown above.  [`server.registerService()`](API.md#serverregisterserviceservicefactory) can be passed a plain object or a factory function.  Just make sure to name your service using the [`Schmervice.name`](API.md#schmervicename) symbol or a `name` property.  Here's a functional adaptation of the example above:
+
+```js
+const Schmervice = require('schmervice');
+const Hapi = require('@hapi/hapi');
+
+(async () => {
+
+    const server = Hapi.server();
+
+    await server.register(Schmervice);
+
+    server.registerService(
+        (srv) => ({
+
+            [Schmervice.name]: 'mathService',
+
+            add: (x, y) => {
+
+                srv.log(['math-service'], 'Adding');
+
+                return Number(x) + Number(y);
+            },
+
+            multiply: (x, y) => {
+
+                srv.log(['math-service'], 'Multiplying');
+
+                return Number(x) * Number(y);
+            }
+        })
+    );
+
+    server.route({
+        method: 'get',
+        path: '/add/{a}/{b}',
+        handler: (request) => {
+
+            const { a, b } = request.params;
+            const { mathService } = request.services();
+
+            return mathService.add(a, b);
+        }
+    });
+
+    await server.start();
+
+    console.log(`Start adding at ${server.info.uri}`);
+})();
+```
+
+### Using existing libraries as services
+
+It's also possible to use existing libraries as services in your application.  Here's an example of how we might utilize [Nodemailer](https://nodemailer.com/) as a service for sending emails.  This example features [`Schmervice.withName()`](API.md#schmervicewithname), which is a convenient way to name your service using the [`Schmervice.name`](API.md#schmervicename) symbol, similarly to the example above:
+
+```js
+const Schmervice = require('schmervice');
+const Nodemailer = require('nodemailer');
+const Hapi = require('@hapi/hapi');
+
+(async () => {
+
+    const server = Hapi.server();
+
+    await server.register(Schmervice);
+
+    server.registerService(
+        Schmervice.withName('emailService', () => {
+
+            // Sendmail is a simple transport to configure for testing, but if you're
+            // not seeing the sent emails then make sure to check your spam folder.
+
+            return Nodemailer.createTransport({
+                sendmail: true
+            });
+        })
+    );
+
+    server.route({
+        method: 'get',
+        path: '/email/{toAddress}/{message*}',
+        handler: async (request) => {
+
+            const { toAddress, message } = request.params;
+            const { emailService } = request.services();
+
+            await emailService.sendMail({
+                from: 'no-reply@yoursite.com',
+                to: toAddress,
+                subject: 'A message for you',
+                text: message
+            });
+
+            return { success: true };
+        }
+    });
+
+    await server.start();
+
+    console.log(`Start emailing at ${server.info.uri}`);
 })();
 ```
 

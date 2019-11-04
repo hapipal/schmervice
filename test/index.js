@@ -726,6 +726,7 @@ describe('Schmervice', () => {
                 });
 
                 // Class
+
                 const Service = class Service {};
 
                 expect(Schmervice.withName('someServiceClass', Service)).to.shallow.equal(Service);
@@ -733,12 +734,11 @@ describe('Schmervice', () => {
 
                 // Sync factory
 
-                const factory = (...args) => ({ name: 'Unused', some: 'prop', args });
+                const factory = (...args) => ({ name: 'Unused', args });
 
                 expect(Schmervice.withName('someServiceFunction', factory)(1, 2, 3)).to.equal({
                     [Schmervice.name]: 'someServiceFunction',
                     name: 'Unused',
-                    some: 'prop',
                     args: [1, 2, 3]
                 });
 
@@ -748,13 +748,12 @@ describe('Schmervice', () => {
 
                     await new Promise((resolve) => setTimeout(resolve, 1));
 
-                    return { name: 'Unused', some: 'prop', args };
+                    return { name: 'Unused', args };
                 };
 
                 expect(await Schmervice.withName('someServiceAsyncFunction', asyncFactory)(1, 2, 3)).to.equal({
                     [Schmervice.name]: 'someServiceAsyncFunction',
                     name: 'Unused',
-                    some: 'prop',
                     args: [1, 2, 3]
                 });
             });
