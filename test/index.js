@@ -166,7 +166,7 @@ describe('Schmervice', () => {
                 }
             });
 
-            it('bind functions up the prototype chain (#Service.caching)', async () => {
+            it('binds functions up the prototype chain (#Service.caching)', async () => {
 
                 const ServiceX = class ServiceX extends Schmervice.Service {
 
@@ -498,7 +498,7 @@ describe('Schmervice', () => {
 
         describe('server.registerService() decoration', () => {
 
-            it('registers a single service, passing server and options.', async () => {
+            it('registers a single service, passing server and options (class factory).', async () => {
 
                 const server = Hapi.server();
                 await server.register(Schmervice);
@@ -523,6 +523,48 @@ describe('Schmervice', () => {
                 expect(serviceX.args[1]).to.equal({});
             });
 
+            it('registers a single service, passing server and options (function factory).', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const createServiceX = (...args) => ({
+                    name: 'ServiceX',
+                    args
+                });
+
+                server.registerService(createServiceX);
+
+                expect(server.services()).to.only.contain(['serviceX']);
+
+                const { serviceX } = server.services();
+
+                expect(serviceX.name).to.equal('ServiceX');
+                expect(serviceX.args).to.have.length(2);
+                expect(serviceX.args[0]).to.shallow.equal(server);
+                expect(serviceX.args[1]).to.shallow.equal(server.realm.pluginOptions);
+                expect(serviceX.args[1]).to.equal({});
+            });
+
+            it('registers a single service (object).', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const serviceXObject = {
+                    name: 'ServiceX'
+                };
+
+                server.registerService(serviceXObject);
+
+                expect(server.services()).to.only.contain(['serviceX']);
+
+                const { serviceX } = server.services();
+
+                expect(serviceX.name).to.equal('ServiceX');
+                expect(serviceX).to.shallow.equal(serviceXObject);
+            });
+
             it('registers an array of services, passing server and options.', async () => {
 
                 const server = Hapi.server();
@@ -535,18 +577,20 @@ describe('Schmervice', () => {
                     }
                 };
 
-                const ServiceY = class ServiceY {
-                    constructor(...args) {
+                const createServiceY = (...args) => ({
+                    name: 'ServiceY',
+                    args
+                });
 
-                        this.args = args;
-                    }
+                const serviceZObject = {
+                    name: 'ServiceZ'
                 };
 
-                server.registerService([ServiceX, ServiceY]);
+                server.registerService([ServiceX, createServiceY, serviceZObject]);
 
-                expect(server.services()).to.only.contain(['serviceX', 'serviceY']);
+                expect(server.services()).to.only.contain(['serviceX', 'serviceY', 'serviceZ']);
 
-                const { serviceX, serviceY } = server.services();
+                const { serviceX, serviceY, serviceZ } = server.services();
 
                 expect(serviceX).to.be.an.instanceof(ServiceX);
                 expect(serviceX.args).to.have.length(2);
@@ -554,11 +598,96 @@ describe('Schmervice', () => {
                 expect(serviceX.args[1]).to.shallow.equal(server.realm.pluginOptions);
                 expect(serviceX.args[1]).to.equal({});
 
-                expect(serviceY).to.be.an.instanceof(ServiceY);
+                expect(serviceY.name).to.equal('ServiceY');
                 expect(serviceY.args).to.have.length(2);
                 expect(serviceY.args[0]).to.shallow.equal(server);
                 expect(serviceY.args[1]).to.shallow.equal(server.realm.pluginOptions);
                 expect(serviceY.args[1]).to.equal({});
+
+                expect(serviceZ.name).to.equal('ServiceZ');
+                expect(serviceZ).to.shallow.equal(serviceZObject);
+            });
+
+            it('registers hapi plugin instances, respecting their name.', { plan: 2 }, async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                await server.register({
+                    name: 'some plugin',
+                    register(srv) {
+
+                        server.registerService(srv);
+
+                        const services = server.services();
+
+                        expect(services).to.only.contain(['somePlugin']);
+                        expect(services.somePlugin).shallow.equal(srv);
+                    }
+                });
+            });
+
+            it('names services in camel-case by default.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class {
+                    static get name() {
+
+                        return '-camel_case class_';
+                    }
+                });
+
+                server.registerService({
+                    name: '-camel_case object_'
+                });
+
+                server.registerService(() => ({
+                    name: '-camel_case function_'
+                }));
+
+                const services = server.services();
+
+                expect(services).to.only.contain(['camelCaseClass', 'camelCaseObject', 'camelCaseFunction']);
+            });
+
+            it('names services literally when using Schmervice.name symbol.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                server.registerService(class Unused {
+                    static get [Schmervice.name]() {
+
+                        return 'raw-name_class';
+                    }
+                });
+
+                server.registerService({
+                    name: 'Unused',
+                    [Schmervice.name]: 'raw-name_object'
+                });
+
+                server.registerService(() => ({
+                    name: 'Unused',
+                    [Schmervice.name]: 'raw-name_function'
+                }));
+
+                const services = server.services();
+
+                expect(services).to.only.contain(['raw-name_class', 'raw-name_function', 'raw-name_object']);
+            });
+
+            it('throws when passed non-services/factories.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                expect(() => server.registerService()).to.throw();
+                expect(() => server.registerService('nothing')).to.throw();
+                expect(() => server.registerService(() => undefined)).to.throw();
+                expect(() => server.registerService(() => 'nothing')).to.throw();
             });
 
             it('throws when a service has no name.', async () => {
@@ -567,6 +696,8 @@ describe('Schmervice', () => {
                 await server.register(Schmervice);
 
                 expect(() => server.registerService(class {})).to.throw('The service class must have a name.');
+                expect(() => server.registerService(() => ({}))).to.throw('The service must have a name.');
+                expect(() => server.registerService({})).to.throw('The service must have a name.');
             });
 
             it('throws when two services with the same name are registered.', async () => {
@@ -576,6 +707,96 @@ describe('Schmervice', () => {
 
                 server.registerService(class ServiceX {});
                 expect(() => server.registerService(class ServiceX {})).to.throw('A service named ServiceX has already been registered.');
+            });
+        });
+
+        describe('Schmervice.withName()', () => {
+
+            it('applies a service name to a service or factory.', async () => {
+
+                // Object
+
+                const obj = { name: 'Unused', some: 'prop' };
+
+                expect(Schmervice.withName('someServiceObject', obj)).to.shallow.equal(obj);
+                expect(obj).to.equal({
+                    [Schmervice.name]: 'someServiceObject',
+                    name: 'Unused',
+                    some: 'prop'
+                });
+
+                // Class
+
+                const Service = class Service {};
+
+                expect(Schmervice.withName('someServiceClass', Service)).to.shallow.equal(Service);
+                expect(Service[Schmervice.name]).to.equal('someServiceClass');
+
+                // Sync factory
+
+                const factory = (...args) => ({ name: 'Unused', args });
+
+                expect(Schmervice.withName('someServiceFunction', factory)(1, 2, 3)).to.equal({
+                    [Schmervice.name]: 'someServiceFunction',
+                    name: 'Unused',
+                    args: [1, 2, 3]
+                });
+
+                // Async factory (not supported by server.registerService(), but useful with haute-couture unwrapping)
+
+                const asyncFactory = async (...args) => {
+
+                    await new Promise((resolve) => setTimeout(resolve, 1));
+
+                    return { name: 'Unused', args };
+                };
+
+                expect(await Schmervice.withName('someServiceAsyncFunction', asyncFactory)(1, 2, 3)).to.equal({
+                    [Schmervice.name]: 'someServiceAsyncFunction',
+                    name: 'Unused',
+                    args: [1, 2, 3]
+                });
+            });
+
+            it('does not apply a service name to object or class that already has one', async () => {
+
+                // Object
+
+                const obj = { [Schmervice.name]: 'x' };
+
+                expect(() => Schmervice.withName('someServiceObject', obj))
+                    .to.throw('Cannot apply a name to a service that already has one.');
+
+                // Class
+
+                const Service = class Service {
+                    static get [Schmervice.name]() {
+
+                        return 'x';
+                    }
+                };
+
+                expect(() => Schmervice.withName('someServiceClass', Service))
+                    .to.throw('Cannot apply a name to a service that already has one.');
+
+                // Sync factory
+
+                const factory = () => ({ [Schmervice.name]: 'x' });
+
+                expect(Schmervice.withName('someServiceFunction', factory))
+                    .to.throw('Cannot apply a name to a service that already has one.');
+
+                // Async factory (not supported by server.registerService(), but useful with haute-couture unwrapping)
+
+                const asyncFactory = async () => {
+
+                    await new Promise((resolve) => setTimeout(resolve, 1));
+
+                    return { [Schmervice.name]: 'x' };
+                };
+
+                await expect(Schmervice.withName('someServiceAsyncFunction', asyncFactory)())
+                    .to.reject('Cannot apply a name to a service that already has one.');
             });
         });
 

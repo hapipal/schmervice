@@ -1,14 +1,59 @@
 # API Reference
 ## The hapi plugin
 ### Registration
-Schmervice may be registered multiple times– it should be registered in any plugin that would like to use any of its features.  It takes no plugin registration options and is entirely configured per-plugin using [`server.registerService()`](#serverregisterserviceserviceclass).
+Schmervice may be registered multiple times– it should be registered in any plugin that would like to use any of its features.  It takes no plugin registration options and is entirely configured per-plugin using [`server.registerService()`](#serverregisterserviceservicefactory).
 
 ### Server decorations
-#### `server.registerService(ServiceClass)`
-Registers a service class `ServiceClass` with `server` (which may be a plugin's server or root server).  It also accepts an array of service classes.  Services are instanced immediately when they are registered, with `server` and corresponding plugin `options` passed to the constructor (i.e. `new ServiceClass(server, options)`).  Note that each class must have a `name` (e.g. `class MyServiceName {}`) and that service names must be unique across the entire hapi server.  
+#### `server.registerService(serviceFactory)`
+
+Registers a service with `server` (which may be a plugin's server or root server).  The passed `serviceFactory` used to define the service object may be any of the following:
+
+ - A service class.  Services are instanced immediately when they are registered, with `server` and corresponding plugin `options` passed to the constructor.  The service class should be named via its natural class `name` or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming)).
+
+    ```js
+    server.registerService(
+        class MyServiceName {
+            constructor(server, options) {}
+            someMethod() {}
+        }
+    );
+    ```
+
+ - A factory function returning a service object.  The factory function is called immediately to create the service, with `server` and corresponding plugin `options` passed as arguments.  The service object should be named using either a `name` property or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming)).
+
+    ```js
+    server.registerService((server, options) => ({
+        name: 'myServiceName',
+        someMethod: () => {}
+    }));
+    ```
+
+ - A service object.  The service object should be named using either a `name` property or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming)).
+
+    ```js
+    server.registerService({
+        name: 'myServiceName',
+        someMethod: () => {}
+    });
+    ```
+
+ - An array containing any of the above.
+
+    ```js
+    server.registerService([
+        class MyServiceName {
+            constructor(server, options) {}
+            someMethod() {}
+        },
+        {
+            name: 'myOtherServiceName',
+            someOtherMethod: () => {}
+        }
+    ]);
+    ```
 
 #### `server.services([all])`
-Returns an object containing each service instance keyed by their instance names (if the class name was pascal-cased `MyServiceName` then the instance name is camel-cased `myServiceName`).  The services that are available on this object are only those registered by `server` or any plugins for which `server` is an ancestor (e.g. if `server` has registered a plugin that registers services).  When `all` is passed as `true` then every service registered with the hapi server– across all plugins– will be returned.
+Returns an object containing each service instance keyed by their [instance names](#service-naming).  The services that are available on this object are only those registered by `server` or any plugins for which `server` is an ancestor (e.g. if `server` has registered a plugin that registers services).  When `all` is passed as `true` then every service registered with the hapi server– across all plugins– will be returned.
 
 ### Request decorations
 #### `request.services([all])`
@@ -17,6 +62,54 @@ See [`server.services()`](#serverservicesall), where `server` is the one in whic
 ### Response toolkit decorations
 #### `h.services([all])`
 See [`server.services()`](#serverservicesall), where `server` is the one in which the corresponding route or server extension was declared (i.e. based upon `h.realm`).
+
+## Service naming
+
+The name of a service is primarily used to determine the key on the result of [`server.services()`](#serverservicesall) where the service may be accessed.  In the case of service classes, the name is derived from the class's natural `name` (e.g. `class ThisIsTheClassName {}`) by default.  In the case of service objects, including those returned from a function, the name is derived from the object's `name` property by default.  In both cases the name is converted to camel-case.
+
+Sometimes you don't want the name to be based on these properties or you don't want their values camel-cased, which is where [`Schmervice.name`](#schmervicename) and [`Schmervice.withName()`](#schmervicewithnamename-servicefactory) can be useful.
+
+### `Schmervice.name`
+
+This is a symbol that can be added as a property to either a service class or service object.  Its value should be a string, and this value will be taken literally as the service's name without any camel-casing.  A service class or object's `Schmervice.name` property is always preferred to its natural class name or `name` property, so this property can be used as an override.
+
+```js
+server.registerService({
+    [Schmervice.name]: 'myServiceName',
+    someMethod: () => {}
+});
+
+// ...
+const { myServiceName } = server.services();
+```
+
+### `Schmervice.withName(name, serviceFactory)`
+
+This is a helper that assigns `name` to the service instance or object produced by `serviceFactory` by setting the service's [`Schmervice.name`](#schmervicename).  When `serviceFactory` is a service class or object, `Schmervice.withName()` returns the same service class or object mutated with `Schmervice.name` set accordingly.  When `serviceFactory` is a function, this helper returns a new function that behaves identically but adds the `Schmervice.name` property to its result.  If the resulting service class or object already has a `Schmervice.name` then this helper will fail.
+
+```js
+server.registerService(
+    Schmervice.withName('myServiceName', () => ({
+        someMethod: () => {}
+    }))
+);
+
+// ...
+const { myServiceName } = server.services();
+```
+
+This is also the preferred way to name a service object from some other library, since it prevents property conflicts.
+
+```js
+const Nodemailer = require('nodemailer');
+
+const transport = Nodemailer.createTransport();
+
+server.registerService(Schmervice.withName('emailService', transport));
+
+// ...
+const { emailService } = server.services();
+```
 
 ## `Schmervice.Service`
 This class is intended to be used as a base class for services registered with schmervice.  However, it is completely reasonable to use this class independently of the [schmervice plugin](#the-hapi-plugin) if desired.
