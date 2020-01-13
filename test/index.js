@@ -1,9 +1,11 @@
 'use strict';
 
 const Code = require('@hapi/code');
-const Hapi = require('@hapi/hapi');
+const Somever = require('@hapi/somever');
 const Schmervice = require('..');
 const Lab = require('@hapi/lab');
+
+const Hapi = Somever.match('>=12', process.version) ? require('@hapi/hapi-19') : require('@hapi/hapi');
 
 const { describe, it } = exports.lab = Lab.script();
 const expect = Code.expect;

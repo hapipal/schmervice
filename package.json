@@ -22,7 +22,7 @@
   },
   "homepage": "https://github.com/hapipal/schmervice#readme",
   "peerDependencies": {
-    "@hapi/hapi": ">=17 <19"
+    "@hapi/hapi": ">=17 <20"
   },
   "dependencies": {
     "@hapi/hoek": "8.x.x"
@@ -30,7 +30,9 @@
   "devDependencies": {
     "@hapi/code": "6.x.x",
     "@hapi/hapi": "18.x.x",
-    "@hapi/lab": "19.x.x",
+    "@hapi/hapi-19": "npm:@hapi/hapi@19",
+    "@hapi/lab": "20.x.x",
+    "@hapi/somever": "2.x.x",
     "coveralls": "3.x.x"
   }
 }
