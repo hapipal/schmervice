@@ -5,7 +5,7 @@ const Somever = require('@hapi/somever');
 const Schmervice = require('..');
 const Lab = require('@hapi/lab');
 
-const Hapi = Somever.match('>=12', process.version) ? require('@hapi/hapi-19') : require('@hapi/hapi');
+const Hapi = Somever.match(process.version, '>=12') ? require('@hapi/hapi-19') : require('@hapi/hapi');
 
 const { describe, it } = exports.lab = Lab.script();
 const expect = Code.expect;
