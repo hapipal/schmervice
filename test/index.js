@@ -488,11 +488,11 @@ describe('Schmervice', () => {
 
     describe('plugin', () => {
 
-        const getPlugin = async (server, name) => {
+        const getPlugin = async (server, name, others) => {
 
             const register = () => null;
 
-            return await Ahem.instance(server, { name, register }, {}, { controlled: false });
+            return await Ahem.instance(server, { name, register, ...others }, {}, { controlled: false });
         };
 
         it('can be registered multiple times.', async () => {
@@ -1350,6 +1350,60 @@ describe('Schmervice', () => {
                 const { serviceX, serviceY } = srvServices;
                 expect(serviceX).to.be.an.instanceof(ServiceX);
                 expect(serviceY).to.be.an.instanceof(ServiceY);
+            });
+
+            it('returns service instances associated with a plugin namespace when passed a string.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                const ServiceY = class ServiceY {};
+                const ServiceZ = class ServiceZ {
+                    static get [Schmervice.sandbox]() {
+
+                        return true;
+                    }
+                };
+                const ServiceW = class ServiceW {};
+
+                const pluginA = await getPlugin(server, 'a');
+                const pluginB = await getPlugin(pluginA, 'b');
+
+                server.registerService(ServiceX);
+                pluginA.registerService(ServiceY);
+                pluginA.registerService(ServiceZ);
+                pluginB.registerService(ServiceW);
+
+                expect(server.services()).to.shallow.equal(pluginB.services(true));
+                expect(server.services('a')).to.shallow.equal(pluginB.services('a'));
+                expect(pluginA.services('b')).to.shallow.equal(pluginB.services());
+
+                expect(server.services()).to.only.contain(['serviceX', 'serviceY', 'serviceW']);
+                expect(pluginA.services()).to.only.contain(['serviceY', 'serviceZ', 'serviceW']);
+                expect(pluginB.services()).to.only.contain(['serviceW']);
+            });
+
+            it('throws when accessing a namespace that doesn\'t exist.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                expect(() => server.services('nope')).to.throw('The plugin namespace nope does not exist.');
+            });
+
+            it('throws when accessing a non-unique namespace.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const pluginX1 = await getPlugin(server, 'x', { multiple: true });
+                pluginX1.registerService({ name: 'serviceX' });
+
+                const pluginX2 = await getPlugin(server, 'x', { multiple: true });
+                pluginX2.registerService({ name: 'serviceY' });
+
+                expect(() => server.services('x')).to.throw('The plugin namespace x is not unique: is that plugin registered multiple times?');
             });
         });
 
