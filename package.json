@@ -33,6 +33,7 @@
     "@hapi/hapi-19": "npm:@hapi/hapi@19",
     "@hapi/lab": "20.x.x",
     "@hapi/somever": "2.x.x",
+    "ahem": "1.x.x",
     "coveralls": "3.x.x"
   }
 }
