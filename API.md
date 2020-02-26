@@ -8,7 +8,7 @@ Schmervice may be registered multiple times– it should be registered in any pl
 
 Registers a service with `server` (which may be a plugin's server or root server).  The passed `serviceFactory` used to define the service object may be any of the following:
 
- - A service class.  Services are instanced immediately when they are registered, with `server` and corresponding plugin `options` passed to the constructor.  The service class should be named via its natural class `name` or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming)).
+ - A service class.  Services are instanced immediately when they are registered, with `server` and corresponding plugin `options` passed to the constructor.  The service class should be named via its natural class `name` or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming-and-sandboxing)).
 
     ```js
     server.registerService(
@@ -19,7 +19,7 @@ Registers a service with `server` (which may be a plugin's server or root server
     );
     ```
 
- - A factory function returning a service object.  The factory function is called immediately to create the service, with `server` and corresponding plugin `options` passed as arguments.  The service object should be named using either a `name` property or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming)).
+ - A factory function returning a service object.  The factory function is called immediately to create the service, with `server` and corresponding plugin `options` passed as arguments.  The service object should be named using either a `name` property or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming-and-sandboxing)).
 
     ```js
     server.registerService((server, options) => ({
@@ -28,7 +28,7 @@ Registers a service with `server` (which may be a plugin's server or root server
     }));
     ```
 
- - A service object.  The service object should be named using either a `name` property or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming)).
+ - A service object.  The service object should be named using either a `name` property or the [`Schmervice.name`](#schmervicename) symbol (see more under [service naming](#service-naming-and-sandboxing)).
 
     ```js
     server.registerService({
@@ -53,9 +53,9 @@ Registers a service with `server` (which may be a plugin's server or root server
     ```
 
 #### `server.services([namespace])`
-Returns an object containing each service instance keyed by their [instance names](#service-naming).
+Returns an object containing each service instance keyed by their [instance names](#service-naming-and-sandboxing).
 
-The services that are available on this object are only those registered by `server` or any plugins for which `server` is an ancestor (e.g. if `server` has registered a plugin that registers services) that are also not [sandboxed](#TODO).  By passing a `namespace` you can obtain the services from the perspective of a different plugin.  When `namespace` is a string, you receive services that are visibile within the plugin named `namespace`.  And when `namespace` is `true`, you receive services that are visibile to the root server: every service registered with the hapi server– across all plugins– that isn't sandboxed.
+The services that are available on this object are only those registered by `server` or any plugins for which `server` is an ancestor (e.g. if `server` has registered a plugin that registers services) that are also not [sandboxed](#service-naming-and-sandboxing).  By passing a `namespace` you can obtain the services from the perspective of a different plugin.  When `namespace` is a string, you receive services that are visibile within the plugin named `namespace`.  And when `namespace` is `true`, you receive services that are visibile to the root server: every service registered with the hapi server– across all plugins– that isn't sandboxed.
 
 ### Request decorations
 #### `request.services([namespace])`
