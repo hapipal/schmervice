@@ -2,15 +2,21 @@
 
 const Code = require('@hapi/code');
 const Somever = require('@hapi/somever');
+const Ahem = require('ahem');
+const InternalHapi = require('@hapi/hapi');
 const Schmervice = require('..');
 const Lab = require('@hapi/lab');
 
 const Hapi = Somever.match(process.version, '>=12') ? require('@hapi/hapi-19') : require('@hapi/hapi');
 
-const { describe, it } = exports.lab = Lab.script();
+const { describe, it, before, after } = exports.lab = Lab.script();
 const expect = Code.expect;
 
 describe('Schmervice', () => {
+
+    before(() => Ahem._setHapi(Hapi));
+
+    after(() => Ahem._setHapi(InternalHapi));
 
     describe('Service class', () => {
 
@@ -482,6 +488,13 @@ describe('Schmervice', () => {
 
     describe('plugin', () => {
 
+        const getPlugin = async (server, name, others) => {
+
+            const register = () => null;
+
+            return await Ahem.instance(server, { name, register, ...others }, {}, { controlled: false });
+        };
+
         it('can be registered multiple times.', async () => {
 
             const server = Hapi.server();
@@ -610,23 +623,19 @@ describe('Schmervice', () => {
                 expect(serviceZ).to.shallow.equal(serviceZObject);
             });
 
-            it('registers hapi plugin instances, respecting their name.', { plan: 2 }, async () => {
+            it('registers hapi plugin instances, respecting their name.', async () => {
 
                 const server = Hapi.server();
                 await server.register(Schmervice);
 
-                await server.register({
-                    name: 'some plugin',
-                    register(srv) {
+                const somePlugin = await getPlugin(server, 'some plugin');
 
-                        server.registerService(srv);
+                server.registerService(somePlugin);
 
-                        const services = server.services();
+                const services = server.services();
 
-                        expect(services).to.only.contain(['somePlugin']);
-                        expect(services.somePlugin).shallow.equal(srv);
-                    }
-                });
+                expect(services).to.only.contain(['somePlugin']);
+                expect(services.somePlugin).shallow.equal(somePlugin);
             });
 
             it('names services in camel-case by default.', async () => {
@@ -681,6 +690,48 @@ describe('Schmervice', () => {
                 expect(services).to.only.contain(['raw-name_class', 'raw-name_function', 'raw-name_object']);
             });
 
+            it('sandboxes services in the current plugin when using Schmervice.sandbox symbol.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServerService = class ServerService {};
+                server.registerService(class ServiceA extends ServerService {});
+
+                const plugin = await getPlugin(server, 'plugin');
+
+                const PluginService = class PluginService {};
+                plugin.registerService(class ServiceA extends PluginService {
+                    static get [Schmervice.sandbox]() {
+
+                        return true;
+                    }
+                });
+
+                plugin.registerService({
+                    name: 'serviceB',
+                    [Schmervice.sandbox]: 'plugin'
+                });
+
+                plugin.registerService(() => ({
+                    name: 'serviceC',
+                    [Schmervice.sandbox]: true
+                }));
+
+                plugin.registerService({
+                    name: 'serviceD',
+                    [Schmervice.sandbox]: false
+                });
+
+                plugin.registerService(() => ({
+                    name: 'serviceE',
+                    [Schmervice.sandbox]: 'server'
+                }));
+
+                expect(server.services()).to.only.contain(['serviceA', 'serviceD', 'serviceE']);
+                expect(plugin.services()).to.only.contain(['serviceA', 'serviceB', 'serviceC', 'serviceD', 'serviceE']);
+            });
+
             it('throws when passed non-services/factories.', async () => {
 
                 const server = Hapi.server();
@@ -702,13 +753,57 @@ describe('Schmervice', () => {
                 expect(() => server.registerService({})).to.throw('The service must have a name.');
             });
 
-            it('throws when two services with the same name are registered.', async () => {
+            it('throws when two non-sandboxed services with the same name are registered.', async () => {
 
                 const server = Hapi.server();
                 await server.register(Schmervice);
 
                 server.registerService(class ServiceX {});
                 expect(() => server.registerService(class ServiceX {})).to.throw('A service named ServiceX has already been registered.');
+            });
+
+            it('throws when two sandboxed services with the same name are registered in the same namespace.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const myPlugin = await getPlugin(server, 'my-plugin');
+
+                myPlugin.registerService({
+                    [Schmervice.name]: 'serviceX',
+                    [Schmervice.sandbox]: true
+                });
+
+                expect(() => {
+
+                    myPlugin.registerService({
+                        [Schmervice.name]: 'serviceX',
+                        [Schmervice.sandbox]: true
+                    });
+                }).to.throw('A service named serviceX has already been registered in plugin namespace my-plugin.');
+            });
+
+            it('throws when a non-sanboxed service shadows a sandboxed service of the same name.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const myPlugin = await getPlugin(server, 'my-plugin');
+
+                myPlugin.registerService({
+                    [Schmervice.name]: 'serviceX',
+                    [Schmervice.sandbox]: true
+                });
+
+                const myOtherPlugin = await getPlugin(myPlugin, 'my-other-plugin');
+
+                expect(() => {
+
+                    myOtherPlugin.registerService({
+                        [Schmervice.name]: 'serviceX',
+                        [Schmervice.sandbox]: false
+                    });
+                }).to.throw('A service named serviceX has already been registered in plugin namespace my-plugin.');
             });
         });
 
@@ -760,7 +855,57 @@ describe('Schmervice', () => {
                 });
             });
 
-            it('does not apply a service name to object or class that already has one', async () => {
+            it('optionally applies sandboxing to a service or factory.', async () => {
+
+                // Object
+
+                const obj = { name: 'Unused', some: 'prop' };
+
+                expect(Schmervice.withName('someServiceObject', { sandbox: true }, obj)).to.shallow.equal(obj);
+                expect(obj).to.equal({
+                    [Schmervice.name]: 'someServiceObject',
+                    [Schmervice.sandbox]: true,
+                    name: 'Unused',
+                    some: 'prop'
+                });
+
+                // Class
+
+                const Service = class Service {};
+
+                expect(Schmervice.withName('someServiceClass', { sandbox: false }, Service)).to.shallow.equal(Service);
+                expect(Service[Schmervice.name]).to.equal('someServiceClass');
+                expect(Service[Schmervice.sandbox]).to.equal(false);
+
+                // Sync factory
+
+                const factory = (...args) => ({ name: 'Unused', args });
+
+                expect(Schmervice.withName('someServiceFunction', { sandbox: 'plugin' }, factory)(1, 2, 3)).to.equal({
+                    [Schmervice.name]: 'someServiceFunction',
+                    [Schmervice.sandbox]: 'plugin',
+                    name: 'Unused',
+                    args: [1, 2, 3]
+                });
+
+                // Async factory (not supported by server.registerService(), but useful with haute-couture unwrapping)
+
+                const asyncFactory = async (...args) => {
+
+                    await new Promise((resolve) => setTimeout(resolve, 1));
+
+                    return { name: 'Unused', args };
+                };
+
+                expect(await Schmervice.withName('someServiceAsyncFunction', { sandbox: 'server' }, asyncFactory)(1, 2, 3)).to.equal({
+                    [Schmervice.name]: 'someServiceAsyncFunction',
+                    [Schmervice.sandbox]: 'server',
+                    name: 'Unused',
+                    args: [1, 2, 3]
+                });
+            });
+
+            it('does not apply a service name to object or class that already has one.', async () => {
 
                 // Object
 
@@ -799,6 +944,47 @@ describe('Schmervice', () => {
 
                 await expect(Schmervice.withName('someServiceAsyncFunction', asyncFactory)())
                     .to.reject('Cannot apply a name to a service that already has one.');
+            });
+
+            it('does not apply sandboxing to object or class that already has it set.', async () => {
+
+                // Object
+
+                const obj = { [Schmervice.sandbox]: true };
+
+                expect(() => Schmervice.withName('someServiceObject', { sandbox: false }, obj))
+                    .to.throw('Cannot apply a sandbox setting to a service that already has one.');
+
+                // Class
+
+                const Service = class {
+                    static get [Schmervice.sandbox]() {
+
+                        return false;
+                    }
+                };
+
+                expect(() => Schmervice.withName('someServiceClass', { sandbox: true }, Service))
+                    .to.throw('Cannot apply a sandbox setting to a service that already has one.');
+
+                // Sync factory
+
+                const factory = () => ({ [Schmervice.sandbox]: 'plugin' });
+
+                expect(Schmervice.withName('someServiceFunction', { sandbox: 'plugin' }, factory))
+                    .to.throw('Cannot apply a sandbox setting to a service that already has one.');
+
+                // Async factory (not supported by server.registerService(), but useful with haute-couture unwrapping)
+
+                const asyncFactory = async () => {
+
+                    await new Promise((resolve) => setTimeout(resolve, 1));
+
+                    return { [Schmervice.sandbox]: 'server' };
+                };
+
+                await expect(Schmervice.withName('someServiceAsyncFunction', { sandbox: 'plugin' }, asyncFactory)())
+                    .to.reject('Cannot apply a sandbox setting to a service that already has one.');
             });
         });
 
@@ -1164,6 +1350,60 @@ describe('Schmervice', () => {
                 const { serviceX, serviceY } = srvServices;
                 expect(serviceX).to.be.an.instanceof(ServiceX);
                 expect(serviceY).to.be.an.instanceof(ServiceY);
+            });
+
+            it('returns service instances associated with a plugin namespace when passed a string.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const ServiceX = class ServiceX {};
+                const ServiceY = class ServiceY {};
+                const ServiceZ = class ServiceZ {
+                    static get [Schmervice.sandbox]() {
+
+                        return true;
+                    }
+                };
+                const ServiceW = class ServiceW {};
+
+                const pluginA = await getPlugin(server, 'a');
+                const pluginB = await getPlugin(pluginA, 'b');
+
+                server.registerService(ServiceX);
+                pluginA.registerService(ServiceY);
+                pluginA.registerService(ServiceZ);
+                pluginB.registerService(ServiceW);
+
+                expect(server.services()).to.shallow.equal(pluginB.services(true));
+                expect(server.services('a')).to.shallow.equal(pluginB.services('a'));
+                expect(pluginA.services('b')).to.shallow.equal(pluginB.services());
+
+                expect(server.services()).to.only.contain(['serviceX', 'serviceY', 'serviceW']);
+                expect(pluginA.services()).to.only.contain(['serviceY', 'serviceZ', 'serviceW']);
+                expect(pluginB.services()).to.only.contain(['serviceW']);
+            });
+
+            it('throws when accessing a namespace that doesn\'t exist.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                expect(() => server.services('nope')).to.throw('The plugin namespace nope does not exist.');
+            });
+
+            it('throws when accessing a non-unique namespace.', async () => {
+
+                const server = Hapi.server();
+                await server.register(Schmervice);
+
+                const pluginX1 = await getPlugin(server, 'x', { multiple: true });
+                pluginX1.registerService({ name: 'serviceX' });
+
+                const pluginX2 = await getPlugin(server, 'x', { multiple: true });
+                pluginX2.registerService({ name: 'serviceY' });
+
+                expect(() => server.services('x')).to.throw('The plugin namespace x is not unique: is that plugin registered multiple times?');
             });
         });
 
