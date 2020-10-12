@@ -17,7 +17,13 @@
     "type": "git",
     "url": "git+https://github.com/hapipal/schmervice.git"
   },
-  "keywords": [],
+  "keywords": [
+    "hapi",
+    "hapijs",
+    "services",
+    "architecture",
+    "caching"
+  ],
   "author": "Devin Ivy <devin@bigroomstudios.com>",
   "license": "MIT",
   "bugs": {
