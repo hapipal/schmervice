@@ -1,22 +1,15 @@
 'use strict';
 
 const Code = require('@hapi/code');
-const Somever = require('@hapi/somever');
-const Ahem = require('ahem');
-const InternalHapi = require('@hapi/hapi');
+const Hapi = require('@hapi/hapi');
+const Ahem = require('@hapipal/ahem');
 const Schmervice = require('..');
 const Lab = require('@hapi/lab');
 
-const Hapi = Somever.match(process.version, '>=12') ? require('@hapi/hapi-20') : require('@hapi/hapi');
-
-const { describe, it, before, after } = exports.lab = Lab.script();
+const { describe, it } = exports.lab = Lab.script();
 const expect = Code.expect;
 
 describe('Schmervice', () => {
-
-    before(() => Ahem._setHapi(Hapi));
-
-    after(() => Ahem._setHapi(InternalHapi));
 
     describe('Service class', () => {
 

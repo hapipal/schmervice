@@ -34,7 +34,7 @@
     "@hapi/code": "8.x.x",
     "@hapi/hapi": "20.x.x",
     "@hapi/lab": "24.x.x",
-    "ahem": "1.x.x",
+    "@hapipal/ahem": "2.x.x",
     "coveralls": "3.x.x"
   }
 }
