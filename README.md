@@ -20,7 +20,7 @@ Services are a nice way to organize related business logic or transactions into 
 
 
 ```js
-const Schmervice = require('schmervice');
+const Schmervice = require('@hapipal/schmervice');
 const Hapi = require('@hapi/hapi');
 
 (async () => {
@@ -71,7 +71,7 @@ const Hapi = require('@hapi/hapi');
 Schmervice allows you to write services in a functional style in additional to the class-oriented approach shown above.  [`server.registerService()`](API.md#serverregisterserviceservicefactory) can be passed a plain object or a factory function.  Just make sure to name your service using the [`Schmervice.name`](API.md#schmervicename) symbol or a `name` property.  Here's a functional adaptation of the example above:
 
 ```js
-const Schmervice = require('schmervice');
+const Schmervice = require('@hapipal/schmervice');
 const Hapi = require('@hapi/hapi');
 
 (async () => {
@@ -124,7 +124,7 @@ const Hapi = require('@hapi/hapi');
 It's also possible to use existing libraries as services in your application.  Here's an example of how we might utilize [Nodemailer](https://nodemailer.com/) as a service for sending emails.  This example features [`Schmervice.withName()`](API.md#schmervicewithname), which is a convenient way to name your service using the [`Schmervice.name`](API.md#schmervicename) symbol, similarly to the example above:
 
 ```js
-const Schmervice = require('schmervice');
+const Schmervice = require('@hapipal/schmervice');
 const Nodemailer = require('nodemailer');
 const Hapi = require('@hapi/hapi');
 
