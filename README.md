@@ -6,14 +6,19 @@ A service layer for hapi
 
 Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
+## Installation
+```sh
+npm install @hapipal/schmervice
+```
+
 ## Usage
 > See also the [API Reference](API.md)
 >
 > For support below node v12 or hapi v19 see schmervice v1.
 
-Services are a nice way to organize related business logic or transactions into classes.  Schmervice is a service layer designed to integrate nicely with hapi.  It consists of two parts that can be used together or separately,
+Services are a nice way to organize related business logic or transactions into classes.  Schmervice is a service layer designed to integrate nicely with hapi.  It consists of two parts that can be used together or separately:
 
-  1. a base `Service` class that integrates your service with hapi by,
+  1. a base `Service` class that integrates your service with hapi by:
       - giving it access to the relevant `server` and plugin `options`.
       - allowing you to implement `async initialize()` and `async teardown()` methods that should run when the server initializes and stops.
       - allowing you to configure certain methods as being cacheable, with all the server method configuration that you're accustomed to.
