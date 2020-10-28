@@ -14,7 +14,7 @@ npm install @hapipal/schmervice
 ## Usage
 > See also the [API Reference](API.md)
 >
-> For support below node v12 or hapi v19 see schmervice v1.
+> Schmervice is intended for use with hapi v19+ and nodejs v12+ (_see v1 for lower support_).
 
 Services are a nice way to organize related business logic or transactions into classes.  Schmervice is a service layer designed to integrate nicely with hapi.  It consists of two parts that can be used together or separately:
 

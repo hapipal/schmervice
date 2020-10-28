@@ -1,4 +1,11 @@
-# API Reference
+# API
+
+A service layer for hapi
+
+> **Note**
+>
+> Schmervice is intended for use with hapi v19+ and nodejs v12+ (_see v1 for lower support_).
+
 ## The hapi plugin
 ### Registration
 Schmervice may be registered multiple times– it should be registered in any plugin that would like to use any of its features.  It takes no plugin registration options and is entirely configured per-plugin using [`server.registerService()`](#serverregisterserviceservicefactory).
