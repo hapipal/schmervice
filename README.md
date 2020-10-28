@@ -1,6 +1,6 @@
 # schmervice
 
-a service layer for hapi
+A service layer for hapi
 
 [![Build Status](https://travis-ci.org/hapipal/schmervice.svg?branch=master)](https://travis-ci.org/hapipal/schmervice) [![Coverage Status](https://coveralls.io/repos/hapipal/schmervice/badge.svg?branch=master&service=github)](https://coveralls.io/github/hapipal/schmervice?branch=master)
 
@@ -8,6 +8,8 @@ Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
 ## Usage
 > See also the [API Reference](API.md)
+>
+> For support below node v12 or hapi v19 see schmervice v1.
 
 Services are a nice way to organize related business logic or transactions into classes.  Schmervice is a service layer designed to integrate nicely with hapi.  It consists of two parts that can be used together or separately,
 
@@ -82,16 +84,13 @@ const Hapi = require('@hapi/hapi');
 
     server.registerService(
         (srv) => ({
-
             [Schmervice.name]: 'mathService',
-
             add: (x, y) => {
 
                 srv.log(['math-service'], 'Adding');
 
                 return Number(x) + Number(y);
             },
-
             multiply: (x, y) => {
 
                 srv.log(['math-service'], 'Multiplying');
