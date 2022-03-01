@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "A service layer for hapi",
   "main": "lib/index.js",
+  "types": "types.d.ts",
   "engines": {
     "node": ">=12"
   },
@@ -41,6 +42,7 @@
     "@hapi/hapi": "20.x.x",
     "@hapi/lab": "24.x.x",
     "@hapipal/ahem": "2.x.x",
-    "coveralls": "3.x.x"
+    "coveralls": "3.x.x",
+    "@hapipal/types-schmervice": ">=0.0.1-alpha.0"
   }
 }
