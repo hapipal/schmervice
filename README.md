@@ -2,7 +2,7 @@
 
 A service layer for hapi
 
-[![Build Status](https://travis-ci.org/hapipal/schmervice.svg?branch=master)](https://travis-ci.org/hapipal/schmervice) [![Coverage Status](https://coveralls.io/repos/hapipal/schmervice/badge.svg?branch=master&service=github)](https://coveralls.io/github/hapipal/schmervice?branch=master)
+[![Build Status](https://travis-ci.org/hapipal/schmervice.svg?branch=main)](https://travis-ci.org/hapipal/schmervice) [![Coverage Status](https://coveralls.io/repos/hapipal/schmervice/badge.svg?branch=main&service=github)](https://coveralls.io/github/hapipal/schmervice?branch=main)
 
 Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
