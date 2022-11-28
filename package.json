@@ -31,16 +31,16 @@
   },
   "homepage": "https://github.com/hapipal/schmervice#readme",
   "peerDependencies": {
-    "@hapi/hapi": ">=19 <21"
+    "@hapi/hapi": ">=19 <22"
   },
   "dependencies": {
-    "@hapi/hoek": "9.x.x"
+    "@hapi/hoek": "^9.0.0"
   },
   "devDependencies": {
-    "@hapi/code": "8.x.x",
-    "@hapi/hapi": "20.x.x",
-    "@hapi/lab": "24.x.x",
-    "@hapipal/ahem": "2.x.x",
-    "coveralls": "3.x.x"
+    "@hapi/code": "^8.0.0",
+    "@hapi/hapi": "^20.0.0",
+    "@hapi/lab": "^24.0.0",
+    "@hapipal/ahem": "^2.1.0",
+    "coveralls": "^3.0.0"
   }
 }
