@@ -4,7 +4,7 @@
   "description": "A service layer for hapi",
   "main": "lib/index.js",
   "engines": {
-    "node": ">=12"
+    "node": ">=16"
   },
   "directories": {
     "test": "test"
@@ -31,16 +31,16 @@
   },
   "homepage": "https://github.com/hapipal/schmervice#readme",
   "peerDependencies": {
-    "@hapi/hapi": ">=19 <22"
+    "@hapi/hapi": ">=20 <22"
   },
   "dependencies": {
-    "@hapi/hoek": "^9.0.0"
+    "@hapi/hoek": "^11.0.2"
   },
   "devDependencies": {
-    "@hapi/code": "^8.0.0",
-    "@hapi/hapi": "^20.0.0",
-    "@hapi/lab": "^24.0.0",
+    "@hapi/code": "^9.0.3",
+    "@hapi/hapi": "^21.3.0",
+    "@hapi/lab": "^25.1.2",
     "@hapipal/ahem": "^2.1.0",
-    "coveralls": "^3.0.0"
+    "coveralls": "^3.1.1"
   }
 }

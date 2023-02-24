@@ -4,7 +4,7 @@ A service layer for hapi
 
 > **Note**
 >
-> Schmervice is intended for use with hapi v19+ and nodejs v12+ (_see v1 for lower support_).
+> Schmervice is intended for use with hapi v20+ and nodejs v16+ (_see v2 for lower support_).
 
 ## The hapi plugin
 ### Registration
