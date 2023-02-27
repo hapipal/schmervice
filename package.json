@@ -40,7 +40,7 @@
     "@hapi/code": "^9.0.3",
     "@hapi/hapi": "^21.3.0",
     "@hapi/lab": "^25.1.2",
-    "@hapipal/ahem": "^2.1.0",
+    "@hapipal/ahem": "^3.0.0",
     "coveralls": "^3.1.1"
   }
 }
