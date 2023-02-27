@@ -3,6 +3,7 @@
   "version": "2.1.0",
   "description": "A service layer for hapi",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "engines": {
     "node": ">=16"
   },
